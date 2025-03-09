@@ -1,273 +1,331 @@
-document.addEventListener("DOMContentLoaded", () => {
-    // Referências aos elementos
-    const taskInput = document.getElementById("taskInput");
-    const addButton = document.getElementById("addTaskButton");
-    const taskList = document.getElementById("taskList");
-    const prioritySelect = document.getElementById("prioritySelect");
-    const dateInput = document.getElementById("taskDate");
-    const folderInput = document.getElementById("taskFolder");
-    const currentDateDisplay = document.getElementById("currentDate");
+document.addEventListener('DOMContentLoaded', function () {
+    let tasks = []; // Variável global para armazenar as tarefas
+    const addTaskButton = document.getElementById('addTaskButton');
+    const taskInput = document.getElementById('taskInput');
+    const taskDate = document.getElementById('taskDate');
+    const taskFolder = document.getElementById('taskFolder');
+    const prioritySelect = document.getElementById('prioritySelect');
 
-    // Botões de visualização
-    const todayViewBtn = document.getElementById("todayViewBtn");
-    const weekViewBtn = document.getElementById("weekViewBtn");
-    const monthViewBtn = document.getElementById("monthViewBtn");
-    const folderViewBtn = document.getElementById("folderViewBtn");
-    const calendarViewBtn = document.getElementById("calendarViewBtn");
-
-    // Modal para a visualização semanal (já existente)
-    const weekModal = document.getElementById("weekModal");
-    const weekTaskList = document.getElementById("weekTaskList");
-    const prevWeekBtn = document.getElementById("prevWeek");
-    const nextWeekBtn = document.getElementById("nextWeek");
-    const closeModalBtn = document.getElementById("closeModal");
-
-    // Atualiza a data atual exibida na tela
-    function updateCurrentDate() {
-        const now = new Date();
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        currentDateDisplay.textContent = now.toLocaleDateString('pt-BR', options);
-    }
-    updateCurrentDate();
-
-    // Função para adicionar nova tarefa no back-end
-    addButton.addEventListener("click", () => {
-        const taskText = taskInput.value.trim();
+    // Evento de clique no botão "Adicionar"
+    addTaskButton.addEventListener('click', async () => {
+        const text = taskInput.value.trim();
+        const date = taskDate.value;
+        const folder = taskFolder.value.trim();
         const priority = prioritySelect.value;
-        const taskDate = dateInput.value;
-        // Se não informar pasta, define 'default'
-        const folder = folderInput ? (folderInput.value.trim() || 'default') : 'default';
 
-        if (taskText === "" || taskDate === "") {
-            alert("Preencha todos os campos obrigatórios!");
+        // Verifica se os campos obrigatórios estão preenchidos
+        if (!text || !date || !priority) {
+            alert('Por favor, preencha todos os campos obrigatórios.');
             return;
         }
 
-        const newTask = { text: taskText, date: taskDate, priority, folder };
-
-        fetch('http://localhost:3000/tasks', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newTask)
-        })
-        .then(response => response.json())
-        .then(data => {
-            // Após adicionar, recarrega a visualização ativa (aqui chamamos renderDefault, por exemplo)
-            renderDefaultTasks();
-            taskInput.value = "";
-            dateInput.value = "";
-            if (folderInput) folderInput.value = "";
-        })
-        .catch(error => console.error('Erro:', error));
-    });
-
-    // Função genérica para renderizar os itens (pode ser adaptada para cada visualização)
-    function createTaskItem(task) {
-        const taskItem = document.createElement("div");
-        taskItem.classList.add("p-4", "border-l-4", "rounded", "flex", "justify-between", "items-center");
-
-        // Define cor de fundo conforme prioridade
-        switch (task.priority) {
-            case "alta":
-                taskItem.classList.add("bg-red-200", "border-red-600");
-                break;
-            case "media":
-                taskItem.classList.add("bg-yellow-200", "border-yellow-600");
-                break;
-            case "baixa":
-                taskItem.classList.add("bg-green-200", "border-green-600");
-                break;
-        }
-
-        const statusText = task.concluded ? "Concluída" : "Pendente";
-        const toggleBtnText = task.concluded ? "Desmarcar" : "Marcar como Concluída";
-
-        taskItem.innerHTML = `
-            <div>
-                ${task.text} - ${task.date} - ${task.priority} - Pasta: ${task.folder} - Status: ${statusText}
-            </div>
-            <div class="flex gap-2">
-                <button class="toggleConcluded bg-green-500 text-white px-2 py-1 rounded" data-id="${task.id}">
-                    ${toggleBtnText}
-                </button>
-                <button class="deleteTask bg-red-500 text-white px-2 py-1 rounded" data-id="${task.id}">
-                    Deletar
-                </button>
-            </div>
-        `;
-
-        // Evento para deletar a tarefa
-        taskItem.querySelector(".deleteTask").addEventListener("click", () => {
-            const taskId = task.id;
-            fetch(`http://localhost:3000/tasks/${taskId}`, { method: 'DELETE' })
-            .then(response => response.json())
-            .then(() => renderActiveView())
-            .catch(error => console.error('Erro:', error));
-        });
-
-        // Evento para alternar status de conclusão
-        taskItem.querySelector(".toggleConcluded").addEventListener("click", () => {
-            const taskId = task.id;
-            const newStatus = !task.concluded;
-            fetch(`http://localhost:3000/tasks/${taskId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ concluded: newStatus })
-            })
-            .then(response => response.json())
-            .then(() => renderActiveView())
-            .catch(error => console.error('Erro:', error));
-        });
-
-        return taskItem;
-    }
-
-    // Variável para armazenar qual visualização está ativa
-    let activeView = "default"; // "today", "folder", "calendar", etc.
-
-    // Função para determinar qual função de renderização chamar
-    function renderActiveView() {
-        switch (activeView) {
-            case "today":
-                renderTodayTasks();
-                break;
-            case "folder":
-                renderFolderView();
-                break;
-            case "calendar":
-                renderCalendarView();
-                break;
-            default:
-                renderDefaultTasks();
-        }
-    }
-
-    // Visualização padrão: lista todas as tarefas (sem agrupamento)
-    function renderDefaultTasks() {
-        fetch('http://localhost:3000/tasks')
-        .then(response => response.json())
-        .then(tasks => {
-            taskList.innerHTML = "";
-            tasks.forEach(task => taskList.appendChild(createTaskItem(task)));
-        })
-        .catch(error => console.error('Erro:', error));
-    }
-
-    // Visualização de "Hoje": filtra tarefas cuja data seja igual à data atual
-    function renderTodayTasks() {
-        fetch('http://localhost:3000/tasks')
-        .then(response => response.json())
-        .then(tasks => {
-            const today = new Date().toISOString().split('T')[0];
-            const todayTasks = tasks.filter(task => task.date === today);
-            taskList.innerHTML = "";
-            if (todayTasks.length === 0) {
-                taskList.innerHTML = "<p class='text-center'>Nenhuma tarefa para hoje.</p>";
-                return;
-            }
-            todayTasks.forEach(task => taskList.appendChild(createTaskItem(task)));
-        })
-        .catch(error => console.error('Erro:', error));
-    }
-
-    // Visualização "Por Pasta": agrupa tarefas por pasta
-    function renderFolderView() {
-        fetch('http://localhost:3000/tasks')
-        .then(response => response.json())
-        .then(tasks => {
-            // Agrupa tarefas por pasta
-            const folders = {};
-            tasks.forEach(task => {
-                if (!folders[task.folder]) folders[task.folder] = [];
-                folders[task.folder].push(task);
+        try {
+            // Fazendo a requisição POST para adicionar a tarefa
+            const response = await fetch('http://localhost:3000/tasks', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    text,
+                    date,
+                    priority,
+                    folder,
+                }),
             });
-            taskList.innerHTML = "";
-            // Para cada pasta, cria uma seção
-            for (const folder in folders) {
-                const folderSection = document.createElement("div");
-                folderSection.classList.add("mb-4", "folderSection");
-                folderSection.innerHTML = `<h3 class="text-2xl font-bold mb-2 folderName">${folder}</h3>`;
-                folders[folder].forEach(task => folderSection.appendChild(createTaskItem(task)));
-                taskList.appendChild(folderSection);
 
-                // Adiciona o evento de exibição das tarefas da pasta
-                const folderName = folderSection.querySelector(".folderName");
-                folderName.addEventListener("click", () => {
-                    const isOpen = folderSection.classList.contains("open");
-                    if (isOpen) {
-                        folderSection.classList.remove("open");
-                        folderSection.querySelectorAll(".taskItem").forEach(task => task.style.display = "none");
-                    } else {
-                        folderSection.classList.add("open");
-                        folderSection.querySelectorAll(".taskItem").forEach(task => task.style.display = "block");
-                    }
-                });
+            // Verifica se a resposta foi bem-sucedida
+            if (response.ok) {
+                const newTask = await response.json();
+                alert('Tarefa adicionada com sucesso!');
+                console.log('Tarefa criada:', newTask);
+                // Limpar os campos após a criação
+                taskInput.value = '';
+                taskDate.value = '';
+                taskFolder.value = '';
+                prioritySelect.value = 'alta';
+            } else {
+                const errorData = await response.json();
+                alert(`Erro: ${errorData.error}`);
             }
-        })
-        .catch(error => console.error('Erro:', error));
+        } catch (error) {
+            console.error('Erro ao adicionar a tarefa:', error);
+            alert('Ocorreu um erro ao adicionar a tarefa.');
+        }
+    });
+
+    // Função para buscar as tarefas e agrupar por pasta
+    function fetchTasksAndGroupByFolder() {
+        fetch('http://localhost:3000/tasks')
+            .then(response => response.json())
+            .then(fetchedTasks => {
+                tasks = fetchedTasks; // Armazena as tarefas
+                const folders = {};
+
+                // Agrupar tarefas por pasta
+                tasks.forEach(task => {
+                    const folder = task.folder;
+                    if (!folders[folder]) {
+                        folders[folder] = [];
+                    }
+                    folders[folder].push(task);
+                });
+
+                // Exibir as pastas na barra lateral
+                displayFolders(folders);
+            })
+            .catch(err => {
+                console.error('Erro ao buscar tarefas:', err);
+            });
     }
 
-    // Visualização "Calendário": agrupa tarefas por data (exibindo a data como cabeçalho)
-    function renderCalendarView() {
-        var calendarEl = document.getElementById('calendar');
-      
-        var calendar = new FullCalendar.Calendar(calendarEl, {
-          initialView: 'dayGridMonth', 
-          headerToolbar: {
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay'
-          },
-          events: function(fetchInfo, successCallback, failureCallback) {
-            fetch('http://localhost:3000/tasks')
-              .then(response => response.json())
-              .then(tasks => {
-                const events = tasks.map(task => {
-                  return {
-                    id: task.id,
-                    title: task.text,
-                    start: task.date, 
-                    color: task.priority === 'alta' ? '#F87171' : 
-                           task.priority === 'media' ? '#FACC15' : 
-                           task.priority === 'baixa' ? '#86EFAC' : '#60A5FA',
-                    extendedProps: {
-                      folder: task.folder,
-                      concluded: task.concluded
-                    }
-                  };
-                });
-                successCallback(events);
-              })
-              .catch(err => {
-                console.error('Erro ao buscar tarefas:', err);
-                failureCallback(err);
-              });
-          },
-          eventDidMount: function(info) {
-            var tooltipContent = `Pasta: ${info.event.extendedProps.folder} - Status: ${info.event.extendedProps.concluded ? 'Concluída' : 'Pendente'}`;
-            info.el.setAttribute('title', tooltipContent);
-          }
+    // Função para exibir as pastas na barra lateral
+    function displayFolders(folders) {
+        const foldersContainer = document.getElementById('folders');
+        foldersContainer.innerHTML = ''; // Limpa o conteúdo anterior
+
+        // Criar um botão para cada pasta
+        Object.keys(folders).forEach(folderName => {
+            const folderButton = document.createElement('button');
+            folderButton.classList.add('w-full', 'text-left', 'bg-indigo-500', 'px-4', 'py-2', 'rounded');
+            folderButton.textContent = folderName;
+            folderButton.addEventListener('click', () => {
+                displayTasks(folders[folderName]); // Exibir as tarefas da pasta
+            });
+
+            foldersContainer.appendChild(folderButton);
         });
-      
-        calendar.render();
-      }
-      
+    }
 
-    // Eventos para alternar visualizações
-    todayViewBtn.addEventListener("click", () => { activeView = "today"; renderActiveView(); });
-    folderViewBtn.addEventListener("click", () => { activeView = "folder"; renderActiveView(); });
-    calendarViewBtn.addEventListener("click", () => { activeView = "calendar"; renderActiveView(); });
-    // Você pode manter os eventos para semana e mês conforme seu modal ou implementar funções similares.
-    weekViewBtn.addEventListener("click", () => {
-        // Exibe o modal da semana conforme seu código existente
-        renderWeekTasks(); // se essa função já estiver implementada
-        weekModal.classList.remove("hidden");
+    // Função para exibir as tarefas de uma pasta
+    function displayTasks(tasksToDisplay) {
+        const taskListContainer = document.getElementById('taskList');
+        taskListContainer.innerHTML = ''; // Limpa as tarefas anteriores
+    
+        tasksToDisplay.forEach(task => {
+            // Cria o container para a tarefa
+            const taskDiv = document.createElement('div');
+            taskDiv.classList.add('bg-white', 'p-4', 'shadow', 'rounded-lg', 'flex', 'items-center', 'gap-4');
+            taskDiv.dataset.taskId = task.id; // Adiciona o ID da tarefa no div
+    
+            // Cria o checkbox para marcar a tarefa como concluída
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.classList.add('task-check');
+            checkbox.dataset.taskId = task.id;
+            checkbox.checked = task.concluded; // Marca a tarefa se estiver concluída
+    
+            // Cria o conteúdo da tarefa
+            const taskContent = document.createElement('div');
+            taskContent.classList.add('flex', 'flex-col');
+            
+            const taskTitle = document.createElement('h3');
+            taskTitle.classList.add('text-xl', 'font-semibold');
+            taskTitle.textContent = task.text;
+    
+            const taskDate = document.createElement('p');
+            taskDate.classList.add('text-gray-600');
+            taskDate.textContent = `Data: ${task.date}`;
+    
+            const taskPriority = document.createElement('p');
+            taskPriority.classList.add('text-gray-600');
+            taskPriority.textContent = `Prioridade: ${task.priority}`;
+            
+            // Cria o indicador de status de conclusão
+            const statusIndicator = document.createElement('span');
+            statusIndicator.classList.add('text-sm');
+            statusIndicator.textContent = task.concluded ? 'Concluída' : 'Pendente';
+            statusIndicator.classList.add(task.concluded ? 'text-green-600' : 'text-red-600');
+            
+            // Adiciona os elementos dentro do container da tarefa
+            taskContent.appendChild(taskTitle);
+            taskContent.appendChild(taskDate);
+            taskContent.appendChild(taskPriority);
+            taskContent.appendChild(statusIndicator); // Exibe o status da tarefa
+            taskDiv.appendChild(checkbox);
+            taskDiv.appendChild(taskContent);
+            
+            taskListContainer.appendChild(taskDiv);
+    
+            // Adiciona o evento para atualizar o status da tarefa
+            checkbox.addEventListener('change', async (event) => {
+                const taskId = event.target.dataset.taskId; // Obtém o ID da tarefa
+                const isChecked = event.target.checked; // Verifica se a tarefa foi marcada como concluída
+    
+                try {
+                    // Envia a requisição PATCH para atualizar o status da tarefa
+                    const response = await fetch(`http://localhost:3000/tasks/${taskId}`, {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ concluded: isChecked }),
+                    });
+    
+                    if (response.ok) {
+                        const result = await response.json();
+    
+                        // Atualiza a interface com o novo status
+                        const taskDiv = document.querySelector(`[data-task-id='${taskId}']`);
+                        const statusIndicator = taskDiv.querySelector('span');
+                        statusIndicator.textContent = isChecked ? 'Concluída' : 'Pendente';
+                        statusIndicator.classList.remove(isChecked ? 'text-red-600' : 'text-green-600');
+                        statusIndicator.classList.add(isChecked ? 'text-green-600' : 'text-red-600');
+                    } else {
+                        const errorData = await response.json();
+                        console.error(`Erro: ${errorData.error}`);
+                    }
+                } catch (error) {
+                    console.error('Erro ao atualizar o status da tarefa:', error);
+                }
+            });
+        });
+    }
+    
+
+
+    // Função para exibir ou esconder as exibições
+    function toggleViews(viewToShow) {
+        const views = ['todayView', 'weekView', 'monthView', 'calendarView'];
+        views.forEach(view => {
+            const viewElement = document.getElementById(view);
+            if (view === viewToShow) {
+                viewElement.style.display = 'block'; // Exibe a view selecionada
+            } else {
+
+                viewElement.style.display = 'none'; // Esconde as outras views
+            }
+        });
+    }
+
+    // Função para filtrar as tarefas de hoje
+    function filterTasksByToday() {
+        const today = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
+        const tasksToday = tasks.filter(task => {
+            return task.date.split('T')[0] === today; // Compara a data da tarefa com a data de hoje
+        });
+        displayTasks(tasksToday);
+    }
+
+    // Evento de clique no botão "Ver Tarefas de Hoje"
+    const todayViewBtn = document.getElementById('todayViewBtn');
+    todayViewBtn.addEventListener('click', function () {
+        filterTasksByToday();
+        toggleViews('todayView');
     });
-    // (Eventos para prevWeek, nextWeek e fechar modal já existem abaixo)
-    prevWeekBtn.addEventListener("click", () => { /* lógica para semana anterior */ });
-    nextWeekBtn.addEventListener("click", () => { /* lógica para próxima semana */ });
-    closeModalBtn.addEventListener("click", () => { weekModal.classList.add("hidden"); });
 
-    // Renderiza a visualização padrão ao carregar a página
-    renderActiveView();
+    // Função para calcular o início e fim da semana atual
+    function getWeekRange() {
+        const currentDate = new Date();
+        const startOfWeek = currentDate.getDate() - currentDate.getDay(); // Domingo (primeiro dia da semana)
+        const endOfWeek = startOfWeek + 6; // Sábado (último dia da semana)
+
+        const startDate = new Date(currentDate.setDate(startOfWeek));
+        const endDate = new Date(currentDate.setDate(endOfWeek));
+
+        // Ajuste no formato de data (YYYY-MM-DD)
+        return {
+            start: startDate.toISOString().split('T')[0],
+            end: endDate.toISOString().split('T')[0]
+        };
+    }
+
+    // Função para filtrar as tarefas da semana atual
+    function filterTasksByWeek() {
+        const weekRange = getWeekRange(); // Obtém o intervalo da semana atual
+
+        const tasksThisWeek = tasks.filter(task => {
+            const taskDate = task.date.split('T')[0]; // Retira a parte do tempo da data
+            return taskDate >= weekRange.start && taskDate <= weekRange.end;
+        });
+
+        displayTasks(tasksThisWeek); // Exibe as tarefas filtradas
+    }
+
+    // Eventos de clique
+    const weekViewBtn = document.getElementById('weekViewBtn');
+    weekViewBtn.addEventListener('click', function () {
+        filterTasksByWeek();
+        toggleViews('weekView');
+    });
+
+    function getMonthRange() {
+        const date = new Date();
+        const startDate = new Date(date.getFullYear(), date.getMonth(), 1); // Primeiro dia do mês
+        const endDate = new Date(date.getFullYear(), date.getMonth() + 1, 0); // Último dia do mês
+        return {
+            start: startDate.toISOString().split('T')[0],
+            end: endDate.toISOString().split('T')[0]
+        };
+    }
+
+    // Função para filtrar as tarefas do mês atual
+    function filterTasksByMonth() {
+        const monthRange = getMonthRange();
+        const tasksThisMonth = tasks.filter(task => {
+            const taskDate = task.date.split('T')[0]; // Remove a parte de tempo
+            return taskDate >= monthRange.start && taskDate <= monthRange.end;
+        });
+
+        displayTasks(tasksThisMonth);
+    }
+
+    // Evento de clique no botão "Ver Tarefas do Mês"
+    const monthViewBtn = document.getElementById('monthViewBtn');
+    monthViewBtn.addEventListener('click', function () {
+        filterTasksByMonth();
+        toggleViews('monthView');
+    });
+
+    function renderCalendarView() {
+        var calendarEl = document.getElementById('calendarView');
+
+        var calendarView = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,timeGridDay'
+            },
+            events: function (fetchInfo, successCallback, failureCallback) {
+                fetch('http://localhost:3000/tasks')
+                    .then(response => response.json())
+                    .then(tasks => {
+                        const events = tasks.map(task => {
+                            return {
+                                id: task.id,
+                                title: task.text,
+                                start: task.date,
+                                color: task.priority === 'alta' ? '#F87171' :
+                                    task.priority === 'media' ? '#FACC15' :
+                                        task.priority === 'baixa' ? '#86EFAC' : '#60A5FA',
+                                extendedProps: {
+                                    folder: task.folder,
+                                    concluded: task.concluded
+                                }
+                            };
+                        });
+                        successCallback(events);
+                    })
+                    .catch(err => {
+                        console.error('Erro ao buscar tarefas:', err);
+                        failureCallback(err);
+                    });
+            },
+            eventDidMount: function (info) {
+                var tooltipContent = `Pasta: ${info.event.extendedProps.folder} - Status: ${info.event.extendedProps.concluded ? 'Concluída' : 'Pendente'}`;
+                info.el.setAttribute('title', tooltipContent);
+            }
+        });
+
+        calendarView.render();
+    }
+
+    const calendarViewBtn = document.getElementById('calendarViewBtn');
+    calendarViewBtn.addEventListener('click', function () {
+        renderCalendarView();
+        // toggleViews('calendarView')
+    });
+    // Chama a função ao carregar a página
+    fetchTasksAndGroupByFolder();
 });
