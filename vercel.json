@@ -1,34 +1,35 @@
 {
     "version": 2,
     "builds": [
-        {
-            "src": "package.json",
-            "use": "@vercel/node",
-            "config": {
-                "maxLambdaSize": "50mb"
-            }
-        },
-        {
-            "src": "agendaFront/*",
-            "use": "@vercel/static"
+      {
+        "src": "package.json",
+        "use": "@vercel/node", 
+        "config": {
+          "maxLambdaSize": "50mb"
         }
+      },
+      {
+        "src": "**/*",
+        "use": "@vercel/static"
+      }
     ],
     "routes": [
         {
-            "src": "/",
-            "dest": "/agendaFront/index.html"
-        },
-        {
-            "src": "/cadastro",
-            "dest": "/agendaFront/cadastro.html"
-        },
-        {
-            "src": "/agenda",
-            "dest": "/agendaFront/agenda.html"
-        },
-        {
+            "src": "^/$",
+            "dest": "/index.html"
+          },
+          {
+            "src": "^/cadastro/?$",
+            "dest": "/cadastro.html"
+          },
+          {
+            "src": "^/agenda/?$",
+            "dest": "/agenda.html"
+          },
+          {
             "src": "/(.*)",
-            "dest": "/agendaFront/$1"
-        }
+            "dest": "/$1"
+          }
     ]
-}
+  }
+  
