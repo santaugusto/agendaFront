@@ -14,7 +14,7 @@ document.getElementById('formCadastro').addEventListener('submit', async functio
 
     // Enviar dados para a API
     try {
-        const response = await fetch('http://localhost:3000/cadastro', {
+        const response = await fetch('https://agenda-back-theta.vercel.app/cadastro', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

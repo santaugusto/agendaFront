@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             // Fazendo a requisição POST para adicionar a tarefa
-            const response = await fetch(`http://localhost:3000/usuario/${userId}/task`, {
+            const response = await fetch(`https://agenda-back-theta.vercel.app/usuario/${userId}/task`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -91,9 +91,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         console.log("ID do usuário recebido:", userId);
-
+""
         try {
-            const response = await fetch(`http://localhost:3000/usuario/${userId}/tasks`);
+            const response = await fetch(`https://agenda-back-theta.vercel.app/usuario/${userId}/tasks`);
 
             if (!response.ok) {
                 throw new Error(`Erro ao buscar tarefas: ${response.statusText}`);
@@ -199,7 +199,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 try {
                     // Envia a requisição PATCH para atualizar o status da tarefa
-                    const response = await fetch(`http://localhost:3000/tasks/${taskId}`, {
+                    const response = await fetch(`https://agenda-back-theta.vercel.app/tasks/${taskId}`, {
                         method: 'PATCH',
                         headers: {
                             'Content-Type': 'application/json',
@@ -354,7 +354,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
     
                 // Buscar as tarefas do usuário
-                fetch(`http://localhost:3000/usuario/${userId}/tasks`)
+                fetch(`https://agenda-back-theta.vercel.app/usuario/${userId}/tasks`)
                     .then(response => response.json())
                     .then(data => {
                         // Verificar se a resposta contém tarefas

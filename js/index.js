@@ -14,7 +14,7 @@
 
     try {
         // Fazendo a requisição POST para a API de login
-        const response = await fetch('http://localhost:3000/login', {
+        const response = await fetch('https://agenda-back-theta.vercel.app/login', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
