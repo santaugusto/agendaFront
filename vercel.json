@@ -9,14 +9,14 @@
             }
         },
         {
-            "src": "index.html",
+            "src": "agendaFront/*",
             "use": "@vercel/static"
         }
     ],
     "routes": [
         {
             "src": "/(.*)",
-            "dest": "/$1"
+            "dest": "agendaFront/$1"
         }
     ]
 }
